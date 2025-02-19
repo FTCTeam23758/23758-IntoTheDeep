@@ -16,16 +16,25 @@ public class Plesio {
     public Servo intake;
     public Servo outtake;
     public Servo wrist;
-    //public SparkFunOTOS otos;
+    public SparkFunOTOS otos;
 
-    final double intake_open = 0.4;
-    final double intake_close = 0.55;
+    final double intake_open = 0.12;
+    final double intake_close = 0;
 
-    final double outtake_open = 0.5;
-    final double outtake_close = 0.2;
+    final double outtake_open = 0.15;
+    final double outtake_close = 0.35;
 
-    final double wrist_in = 1;
-    final double wrist_out = 0;
+    private final double wrist_in = 0.2;
+    private final double wrist_out = 1;
+    private final double wrist_mid = 0.6;
+
+    public boolean intakeMode = false;
+    public boolean intakeButtonState = false;
+    public boolean outtakeMode = false;
+    public boolean outtakeButtonState = false;
+    public boolean wristButtonState = false;
+
+    public int wristState = 0;
 
     public void init(HardwareMap hardwareMap) {
         frontLeft = hardwareMap.get(DcMotorEx.class, "fl");
@@ -67,11 +76,12 @@ public class Plesio {
         intake.setPosition(intake_close);
 
         outtake = hardwareMap.get(Servo.class, "out");
+        outtake.setDirection(Servo.Direction.REVERSE);
         outtake.setPosition(outtake_close);
 
         wrist = hardwareMap.get(Servo.class, "wrist");
 
-        //otos = hardwareMap.get(SparkFunOTOS.class, "otos");
+        otos = hardwareMap.get(SparkFunOTOS.class, "otos");
     }
 
     public void intakeOpen(){
@@ -90,7 +100,7 @@ public class Plesio {
         outtake.setPosition(outtake_close);
     }
 
-    public void mecanumDriveRC(double x, double y, double rx){
+    public void driveRobotCentric(double x, double y, double rx){
         double denominator = Math.max(Math.abs(y) + Math.abs(x) + Math.abs(rx), 1);
 
         double frontLeftPower = (y + x + rx) / denominator;
@@ -104,7 +114,7 @@ public class Plesio {
         backRight.setPower(backRightPower);
     }
 
-    public void mecanumDriveFC(double x, double y, double rx, double heading){
+    public void driveFieldCentric(double x, double y, double rx, double heading){
         double rotX = x * Math.cos(-heading) - y * Math.sin(-heading);
         double rotY = x * Math.sin(-heading) + y * Math.cos(-heading);
 
@@ -118,6 +128,59 @@ public class Plesio {
         backLeft.setPower(backLeftPower);
         frontRight.setPower(frontRightPower);
         backRight.setPower(backRightPower);
+    }
+
+    public void intakeSetPos(boolean button) {
+        if (button && !intakeButtonState) {
+            intakeMode = !intakeMode;
+        }
+
+        intakeButtonState = button;
+
+        intake.setPosition(intakeMode ? intake_open : intake_close);
+    }
+
+    public void outtakeSetPos(boolean button) {
+        if (button && !outtakeButtonState) {
+            outtakeMode = !outtakeMode;
+        }
+
+        outtakeButtonState = button;
+
+        outtake.setPosition(outtakeMode ? outtake_open : outtake_close);
+    }
+
+    public void wristControl(){
+        if(wristState == 0){
+            wrist.setPosition(wrist_mid);
+            wristState = 1;
+        } else if(wristState == 1){
+            wrist.setPosition(wrist_in);
+            wristState = 0;
+        }
+    }
+
+    public void verticalSlideControl(boolean up, boolean down){
+        if(up){
+            verticalSlide1Motor.setPower(1);
+            verticalSlide2Motor.setPower(1);
+        } else if(down){
+            verticalSlide1Motor.setPower(-1);
+            verticalSlide2Motor.setPower(-1);
+        } else{
+            verticalSlide2Motor.setPower(0);
+            verticalSlide2Motor.setPower(0);
+        }
+    }
+
+    public void horizontalSlideControl(boolean up, boolean down){
+        if(up){
+            slideMotor.setPower(1);
+        } else if(down){
+            slideMotor.setPower(-1);
+        } else{
+            slideMotor.setPower(0);
+        }
     }
 
 

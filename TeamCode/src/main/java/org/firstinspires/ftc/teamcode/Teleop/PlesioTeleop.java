@@ -4,6 +4,14 @@ import com.qualcomm.hardware.sparkfun.SparkFunOTOS;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
+import com.acmerobotics.roadrunner.Action;
+import com.qualcomm.hardware.sparkfun.SparkFunOTOS;
+import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.hardware.Servo;
+
 import org.firstinspires.ftc.teamcode.Commands.Plesio;
 
 @TeleOp(name = "Plesio Teleop")
@@ -17,22 +25,42 @@ public class PlesioTeleop extends OpMode {
         telemetry.update();
 
         plesio.init(hardwareMap);
-        //plesio.otos.calibrateImu();
-        //plesio.otos.resetTracking();
+        plesio.otos.calibrateImu();
+        plesio.otos.resetTracking();
     }
 
     @Override
     public void loop(){
-        //SparkFunOTOS.Pose2D pos = plesio.otos.getPosition();
-        //double robotHeading = pos.h;
+        SparkFunOTOS.Pose2D pos = plesio.otos.getPosition();
+        double robotHeading = pos.h;
+        double x = gamepad1.left_stick_x;
+        double y = gamepad1.left_stick_y;
+        double rx = gamepad1.right_stick_x;
 
-        //plesio.mecanumDriveFC(gamepad1.left_stick_x, gamepad1.left_stick_y,
-                //gamepad1.right_stick_x, robotHeading);
+        plesio.driveRobotCentric(x, -y, rx);
 
-        //plesio.mecanumDriveRC(gamepad1.left_stick_x, gamepad1.left_stick_y, gamepad1.right_stick_x);
+        //plesio.driveFieldCentric(x, -y, rx, robotHeading);
 
-        //if (gamepad1.y) {
-            //plesio.otos.resetTracking();
+        if (gamepad1.y) {
+            plesio.otos.resetTracking();
+        }
+
+        plesio.intakeSetPos(gamepad2.y);
+        plesio.outtakeSetPos(gamepad2.x);
+
+        //if(gamepad2.a && !plesio.wristButtonState){
+            //plesio.wristControl();
         //}
+
+        if(gamepad2.dpad_up || gamepad2.dpad_down){
+            plesio.verticalSlideControl(gamepad2.dpad_up, gamepad2.dpad_down);
+        }
+
+        if(gamepad2.dpad_right || gamepad2.dpad_left){
+            plesio.horizontalSlideControl(gamepad2.dpad_right, gamepad2.dpad_left);
+        }
+
+        telemetry.addData("Robot Heading:", robotHeading);
+        telemetry.update();
     }
 }
