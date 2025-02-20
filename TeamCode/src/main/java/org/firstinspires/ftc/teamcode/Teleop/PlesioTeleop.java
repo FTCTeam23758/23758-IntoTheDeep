@@ -48,9 +48,18 @@ public class PlesioTeleop extends OpMode {
         plesio.intakeSetPos(gamepad2.y);
         plesio.outtakeSetPos(gamepad2.x);
 
-        //if(gamepad2.a && !plesio.wristButtonState){
-            //plesio.wristControl();
-        //}
+        plesio.wristControl(-gamepad2.left_stick_y);
+        plesio.armControl(-gamepad2.right_stick_y);
+        plesio.verticalSlideControl(gamepad2.dpad_up, gamepad2.dpad_down);
+        plesio.horizontalSlideControl(gamepad2.dpad_right, gamepad2.dpad_left);
+
+        /*if(Math.abs(gamepad2.left_stick_y) > 0.3){
+            plesio.wristControl(-gamepad2.left_stick_y);
+        }
+
+        if(Math.abs(gamepad2.right_stick_y) > 0.3){
+            plesio.armControl(-gamepad2.right_stick_y);
+        }
 
         if(gamepad2.dpad_up || gamepad2.dpad_down){
             plesio.verticalSlideControl(gamepad2.dpad_up, gamepad2.dpad_down);
@@ -59,8 +68,11 @@ public class PlesioTeleop extends OpMode {
         if(gamepad2.dpad_right || gamepad2.dpad_left){
             plesio.horizontalSlideControl(gamepad2.dpad_right, gamepad2.dpad_left);
         }
+         */
 
         telemetry.addData("Robot Heading:", robotHeading);
+        telemetry.addData("Left Stick readings:", gamepad2.left_stick_y);
+        telemetry.addData("Right Stick readings:", gamepad2.right_stick_y);
         telemetry.update();
     }
 }

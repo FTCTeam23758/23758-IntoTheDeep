@@ -24,9 +24,9 @@ public class Plesio {
     final double outtake_open = 0.15;
     final double outtake_close = 0.35;
 
-    private final double wrist_in = 0.2;
-    private final double wrist_out = 1;
-    private final double wrist_mid = 0.6;
+    final double wrist_in = 0.2;
+    final double wrist_out = 1;
+    final double wrist_mid = 0.6;
 
     public boolean intakeMode = false;
     public boolean intakeButtonState = false;
@@ -59,12 +59,13 @@ public class Plesio {
         verticalSlide1Motor = hardwareMap.get(DcMotorEx.class, "vS1");
         verticalSlide1Motor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         verticalSlide1Motor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        //verticalSlide2Motor.setDirection(DcMotorSimple.Direction.REVERSE);
         verticalSlide1Motor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         verticalSlide2Motor = hardwareMap.get(DcMotorEx.class, "vS2");
         verticalSlide2Motor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         verticalSlide2Motor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        verticalSlide2Motor.setDirection(DcMotorSimple.Direction.REVERSE);
+        //verticalSlide2Motor.setDirection(DcMotorSimple.Direction.REVERSE);
         verticalSlide2Motor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         armMotor = hardwareMap.get(DcMotorEx.class, "arm");
@@ -80,6 +81,8 @@ public class Plesio {
         outtake.setPosition(outtake_close);
 
         wrist = hardwareMap.get(Servo.class, "wrist");
+        outtake.setDirection(Servo.Direction.REVERSE);
+        wrist.setPosition(wrist_in);
 
         otos = hardwareMap.get(SparkFunOTOS.class, "otos");
     }
@@ -150,13 +153,21 @@ public class Plesio {
         outtake.setPosition(outtakeMode ? outtake_open : outtake_close);
     }
 
-    public void wristControl(){
-        if(wristState == 0){
+    public void wristControl(double y){
+        if(y > 0.5){
+            wrist.setPosition(wrist_out);
+        } else if(y < 0.5){
             wrist.setPosition(wrist_mid);
-            wristState = 1;
-        } else if(wristState == 1){
-            wrist.setPosition(wrist_in);
-            wristState = 0;
+        }
+    }
+
+    public void armControl(double y){
+        if(y > 0.5){
+            armMotor.setPower(1);
+        } else if(y < -0.5){
+            armMotor.setPower(-1);
+        } else{
+            armMotor.setPower(0);
         }
     }
 
@@ -178,11 +189,10 @@ public class Plesio {
             slideMotor.setPower(1);
         } else if(down){
             slideMotor.setPower(-1);
-        } else{
+        } else {
             slideMotor.setPower(0);
         }
     }
-
 
 
     public Action intakeOpenAction(){
