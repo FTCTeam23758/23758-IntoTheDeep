@@ -16,7 +16,7 @@ public class Plesio {
     public Servo intake;
     public Servo outtake;
     public Servo wrist;
-    public SparkFunOTOS otos;
+    //public SparkFunOTOS otos;
 
     final double intake_open = 0.12;
     final double intake_close = 0;
@@ -24,17 +24,32 @@ public class Plesio {
     final double outtake_open = 0.15;
     final double outtake_close = 0.35;
 
-    final double wrist_in = 0.2;
-    final double wrist_out = 1;
-    final double wrist_mid = 0.6;
+    final double wrist_in = 1;
+    final double wrist_out = 0;
+    final double wrist_mid = 0.4;
+    final double wrist_transfer = 0.95;
 
     public boolean intakeMode = false;
     public boolean intakeButtonState = false;
     public boolean outtakeMode = false;
     public boolean outtakeButtonState = false;
-    public boolean wristButtonState = false;
 
-    public int wristState = 0;
+    public int transferState = 0;
+
+    private int lastTargetPosition = -1;
+
+    public double cmByTick = 0.053855874; //constante que define cuantos cm hay en cada tick de los motores el chasis
+
+    public int verticalSlide_posToSpecimen = 1300;
+    public int verticalSlide_posToScoreSpecimen = 1050;
+    public int verticalSlide_posToRetract = -50;
+    public int verticalSlide_posToGetSpecimen = 100;
+
+    public int verticalSlide_posToSample = 2700;
+
+    public int arm_posTo90deg = 80;
+    public int arm_posToSpecimen = 87;
+    public int arm_posToScore = 60;
 
     public void init(HardwareMap hardwareMap) {
         frontLeft = hardwareMap.get(DcMotorEx.class, "fl");
@@ -59,7 +74,7 @@ public class Plesio {
         verticalSlide1Motor = hardwareMap.get(DcMotorEx.class, "vS1");
         verticalSlide1Motor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         verticalSlide1Motor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        //verticalSlide2Motor.setDirection(DcMotorSimple.Direction.REVERSE);
+        //verticalSlide1Motor.setDirection(DcMotorSimple.Direction.REVERSE);
         verticalSlide1Motor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         verticalSlide2Motor = hardwareMap.get(DcMotorEx.class, "vS2");
@@ -81,10 +96,10 @@ public class Plesio {
         outtake.setPosition(outtake_close);
 
         wrist = hardwareMap.get(Servo.class, "wrist");
-        outtake.setDirection(Servo.Direction.REVERSE);
+        wrist.setDirection(Servo.Direction.REVERSE);
         wrist.setPosition(wrist_in);
 
-        otos = hardwareMap.get(SparkFunOTOS.class, "otos");
+        //otos = hardwareMap.get(SparkFunOTOS.class, "otos");
     }
 
     public void intakeOpen(){
@@ -153,21 +168,41 @@ public class Plesio {
         outtake.setPosition(outtakeMode ? outtake_open : outtake_close);
     }
 
-    public void wristControl(double y){
+    public void wristControl(double y, boolean button){
         if(y > 0.5){
             wrist.setPosition(wrist_out);
-        } else if(y < 0.5){
+        } else if(y < -0.5){
             wrist.setPosition(wrist_mid);
+        } else if(button){
+            wrist.setPosition(wrist_transfer);
         }
     }
 
-    public void armControl(double y){
-        if(y > 0.5){
-            armMotor.setPower(1);
+    public void armControlManual(double y){
+        /*if(y > 0.5){
+            armMotor.setPower(0.55);
         } else if(y < -0.5){
-            armMotor.setPower(-1);
+            armMotor.setPower(-0.55);
         } else{
             armMotor.setPower(0);
+        }*/
+        armMotor.setPower(y);
+    }
+
+    public void armControlEncoders(double y){
+        int targetPosition = armMotor.getCurrentPosition();
+
+        if (y > 0.5) {
+            targetPosition = 500;
+        } else if (y < -0.5) {
+            targetPosition = 0;
+        }
+
+        if (targetPosition != lastTargetPosition) {
+            armMotor.setTargetPosition(targetPosition);
+            armMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            armMotor.setPower(0.75);
+            lastTargetPosition = targetPosition;
         }
     }
 
@@ -179,7 +214,7 @@ public class Plesio {
             verticalSlide1Motor.setPower(-1);
             verticalSlide2Motor.setPower(-1);
         } else{
-            verticalSlide2Motor.setPower(0);
+            verticalSlide1Motor.setPower(0);
             verticalSlide2Motor.setPower(0);
         }
     }
@@ -194,6 +229,78 @@ public class Plesio {
         }
     }
 
+    public void transfer (boolean button){
+        if(transferState == 0){
+            wrist.setPosition(wrist_mid);
+
+            transferState = 1;
+        } else if(transferState == 1){
+            wrist.setPosition(wrist_transfer);
+
+            outtake.setPosition(outtake_open);
+
+            transferState = 2;
+        } else if(transferState == 2){
+            outtake.setPosition(outtake_close);
+
+            intake.setPosition(intake_open);
+
+            transferState = 0;
+        }
+    }
+
+    public void stopMotors() {
+        motorsSetPower(0, 0, 0, 0);
+    }
+
+    public void motorsSetPower (double powDeIz, double powDeDe, double powAtIz, double powAtDe) {
+        frontLeft.setPower(powDeIz);
+        frontRight.setPower(powDeDe);
+        backLeft.setPower(powAtIz);
+        backRight.setPower(powAtDe);
+    }
+
+    //se configuran los encoders para poder acceder a las lecturas y configurar limites
+    public void resetChassisEncoders() {
+        frontLeft.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        frontRight.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        backLeft.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        backRight.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+
+        frontLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        frontRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        backLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        backRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+    }
+
+    public void resetMechEncoders() {
+        slideMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        verticalSlide1Motor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        verticalSlide2Motor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        armMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+
+        slideMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        verticalSlide1Motor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        verticalSlide2Motor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        armMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+    }
+
+    public int encoderAverage () {
+        return (frontLeft.getCurrentPosition() + frontRight.getCurrentPosition() +
+                backLeft.getCurrentPosition() + backRight.getCurrentPosition()) / 4;
+    }
+
+    public int encoderAverageOneSide () {
+        return (frontLeft.getCurrentPosition() + frontRight.getCurrentPosition()) / 2;
+    }
+
+    public int encoderAverageDiagonalFlBr () {
+        return (frontLeft.getCurrentPosition() + backRight.getCurrentPosition()) / 2;
+    }
+
+    public int encoderAverageDiagonalBlFr () {
+        return (backLeft.getCurrentPosition() + frontRight.getCurrentPosition()) / 2;
+    }
 
     public Action intakeOpenAction(){
         return new ServoAction(intake, intake_open);
