@@ -16,7 +16,6 @@ public class Plesio {
     public Servo intake;
     public Servo outtake;
     public Servo wrist;
-    //public SparkFunOTOS otos;
 
     final double intake_open = 0.12;
     final double intake_close = 0;
@@ -36,7 +35,10 @@ public class Plesio {
 
     public int transferState = 0;
 
-    private int lastTargetPosition = -1;
+    public int armState = 0;
+
+    public int armTargetPos = 0;
+    public int armCurrentPos = 0;
 
     public double cmByTick = 0.053855874; //constante que define cuantos cm hay en cada tick de los motores el chasis
 
@@ -85,7 +87,8 @@ public class Plesio {
 
         armMotor = hardwareMap.get(DcMotorEx.class, "arm");
         armMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        armMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        armMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        //armMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         armMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         intake = hardwareMap.get(Servo.class, "in");
@@ -132,22 +135,6 @@ public class Plesio {
         backRight.setPower(backRightPower);
     }
 
-    public void driveFieldCentric(double x, double y, double rx, double heading){
-        double rotX = x * Math.cos(-heading) - y * Math.sin(-heading);
-        double rotY = x * Math.sin(-heading) + y * Math.cos(-heading);
-
-        double denominator = Math.max(Math.abs(rotY) + Math.abs(rotX) + Math.abs(rx), 1);
-        double frontLeftPower = (rotY + rotX + rx) / denominator;
-        double backLeftPower = (rotY - rotX + rx) / denominator;
-        double frontRightPower = (rotY - rotX - rx) / denominator;
-        double backRightPower = (rotY + rotX - rx) / denominator;
-
-        frontLeft.setPower(frontLeftPower);
-        backLeft.setPower(backLeftPower);
-        frontRight.setPower(frontRightPower);
-        backRight.setPower(backRightPower);
-    }
-
     public void intakeSetPos(boolean button) {
         if (button && !intakeButtonState) {
             intakeMode = !intakeMode;
@@ -179,30 +166,35 @@ public class Plesio {
     }
 
     public void armControlManual(double y){
-        /*if(y > 0.5){
-            armMotor.setPower(0.55);
-        } else if(y < -0.5){
-            armMotor.setPower(-0.55);
-        } else{
-            armMotor.setPower(0);
-        }*/
         armMotor.setPower(y);
     }
 
-    public void armControlEncoders(double y){
-        int targetPosition = armMotor.getCurrentPosition();
-
-        if (y > 0.5) {
-            targetPosition = 500;
-        } else if (y < -0.5) {
-            targetPosition = 0;
-        }
-
-        if (targetPosition != lastTargetPosition) {
-            armMotor.setTargetPosition(targetPosition);
-            armMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            armMotor.setPower(0.75);
-            lastTargetPosition = targetPosition;
+    public void armControl(){
+        switch(armState){
+            case 0:
+                armTargetPos = armMotor.getCurrentPosition() - armCurrentPos;
+                armMotor.setTargetPosition(armTargetPos);
+                armMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+                armMotor.setPower(0.8);
+                armCurrentPos = armTargetPos;
+                armState = 1;
+                break;
+            case 1:
+                armTargetPos = 100 + armMotor.getCurrentPosition();
+                armMotor.setTargetPosition(armTargetPos);
+                armMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+                armMotor.setPower(0.8);
+                armCurrentPos = armTargetPos;
+                armState = 2;
+                break;
+            case 2:
+                armTargetPos = 40 + armMotor.getCurrentPosition();
+                armMotor.setTargetPosition(armTargetPos);
+                armMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+                armMotor.setPower(0.8);
+                armCurrentPos = armTargetPos;
+                armState = 0;
+                break;
         }
     }
 
